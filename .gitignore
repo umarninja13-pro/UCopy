@@ -1,0 +1,57 @@
+# === U Copy mandatory ignore rules ===
+# Signed installables (upload via GitHub Releases, not source)
+*.apk
+*.aab
+*.aar
+*.ap_
+*.dex
+
+# Java compiled classes
+*.class
+
+# Gradle build artifacts (wrapper jar stays tracked)
+.gradle/
+build/
+!gradle/wrapper/gradle-wrapper.jar
+
+# Local SDK path (per-machine, must never be shared)
+local.properties
+
+# Android Studio / IntelliJ
+.idea/
+*.iml
+.navigation/
+captures/
+.externalNativeBuild/
+.cxx/
+
+# Keystore & signing secrets (NEVER push these)
+*.jks
+*.keystore
+keystore.properties
+keystore/
+
+# Google services config (contains API keys)
+google-services.json
+
+# Logs
+*.log
+
+# OS junk
+.DS_Store
+Thumbs.db
+
+# Native build outputs
+obj/
+*.so.bak
+
+# Proguard output folder (from older tooling)
+proguard/
+# === end U Copy mandatory ignore rules ===
+
+# AndroidIDE editor state (per-developer, must never be shared)
+.acside/
+
+# Kotlin build cache
+kotlin/
+.kotlin/

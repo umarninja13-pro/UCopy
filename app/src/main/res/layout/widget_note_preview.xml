@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="utf-8"?>
+<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@drawable/preview_note_bg"
+    android:padding="16dp">
+
+    <!-- Title -->
+    <TextView
+        android:id="@+id/prev_title"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Meeting Notes"
+        android:textColor="#F8FAFC"
+        android:textSize="18sp"
+        android:textStyle="bold"
+        android:maxLines="2"
+        android:ellipsize="end" />
+
+    <!-- Body -->
+    <TextView
+        android:id="@+id/prev_body"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_below="@id/prev_title"
+        android:layout_marginTop="8dp"
+        android:text="Discuss the new widget design and push the update to production. The UI needs to be polished."
+        android:textColor="#94A3B8"
+        android:textSize="14sp"
+        android:lineSpacingExtra="4dp"
+        android:maxLines="3"
+        android:ellipsize="end" />
+
+    <!-- Footer (U Copy) -->
+    <TextView
+        android:id="@+id/prev_footer"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_alignParentBottom="true"
+        android:layout_alignParentStart="true"
+        android:text="U Copy"
+        android:textColor="#6366F1"
+        android:textSize="12sp"
+        android:textStyle="bold" />
+</RelativeLayout>

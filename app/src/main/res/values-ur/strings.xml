@@ -417,4 +417,10 @@
     <string name="donation_desc">U Copy کو مفت رکھنے میں مدد کریں</string>
     <string name="support_btn">سپورٹ کریں</string>
     <string name="github_btn">سورس کوڈ</string>
+    <string name="crash_title">افسوس! ایپ کریش ہو گئی</string>
+    <string name="crash_desc">ایک غیر متوقع خرابی پیش آئی۔ آپ نیچے دی گئی تفصیلات کاپی کر کے ڈویلپر کو بھیج سکتے ہیں۔</string>
+    <string name="restart_app">ایپ دوبارہ شروع کریں</string>
+    <string name="copy_error">ایرر کاپی کریں</string>
+    <string name="share_error">ایرر شیئر کریں</string>
+    <string name="report_github">گٹ ہب پر رپورٹ کریں</string>
 </resources>

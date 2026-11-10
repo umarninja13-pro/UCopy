@@ -8,6 +8,7 @@
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
 
     <application
+        android:name=".UCopyApp"
         android:allowBackup="true"
         android:icon="@mipmap/ic_launcher"
         android:label="U Copy"
@@ -15,6 +16,12 @@
         android:supportsRtl="true"
         android:theme="@style/Theme.UCopy"
         android:enableOnBackInvokedCallback="true">
+
+                <activity
+            android:name=".ui.crash.CrashActivity"
+            android:exported="false"
+            android:theme="@style/Theme.UCopy"
+            android:process=":crash" />
 
         <activity
             android:name=".MainActivity"

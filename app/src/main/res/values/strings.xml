@@ -442,4 +442,10 @@
     <string name="github_url" translatable="false">https://github.com/umarninja13-pro/UCopy</string>
     <string name="support_btn">Support Us</string>
     <string name="github_btn">Source Code</string>
+    <string name="crash_title">Oops! App Crashed</string>
+    <string name="crash_desc">An unexpected error occurred. You can copy the error details below and send them to the developer.</string>
+    <string name="restart_app">Restart App</string>
+    <string name="copy_error">Copy Error</string>
+    <string name="share_error">Share Error</string>
+    <string name="report_github">Report on GitHub</string>
 </resources>

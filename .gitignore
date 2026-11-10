@@ -53,5 +53,4 @@ proguard/
 .acside/
 
 # Kotlin build cache
-kotlin/
 .kotlin/

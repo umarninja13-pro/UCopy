@@ -11,7 +11,8 @@ dependencyResolutionManagement {
     repositories {
         google()
         mavenCentral()
-        maven { url = uri("https://jitpack.io") }   // یہ لائن ضروری ہے
+        maven { url = uri("https://jitpack.io") }
+
     }
 }
 

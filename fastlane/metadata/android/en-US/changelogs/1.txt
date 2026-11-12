@@ -1,0 +1,5 @@
+Initial release of U Copy v1.0.0
+- Smart Clipboard Listener
+- Markdown notes
+- Custom widgets
+- 4 Design modes

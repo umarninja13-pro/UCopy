@@ -1,0 +1,9 @@
+U Copy is a fast, beautiful, and completely private offline clipboard manager and notes app for Android.
+
+Features:
+- 100% Offline & Private
+- Smart Clipboard Listener
+- Markdown Support
+- Custom Widgets
+- 4 Design Modes
+- Import/Export data

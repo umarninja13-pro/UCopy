@@ -75,6 +75,9 @@ fun HtmlCardView(
                     isHorizontalScrollBarEnabled = false
                     loadDataWithBaseURL(null, scaledHtml, "text/html", "UTF-8", null)
                 }
+            },
+            onRelease = { webView ->
+                webView.destroy()
             }
         )
     }

@@ -15,6 +15,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.platform.LocalUriHandler
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
@@ -24,6 +25,12 @@ import androidx.activity.compose.BackHandler
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AboutDialog(onDismiss: () -> Unit) {
+    val context = LocalContext.current
+    val versionName = remember {
+        try {
+            context.packageManager.getPackageInfo(context.packageName, 0).versionName ?: "1.1.0"
+        } catch (_: Exception) { "1.1.0" }
+    }
     val uriHandler = LocalUriHandler.current
     var selectedTab by remember { mutableStateOf(0) }
     val donationUrl = stringResource(R.string.donation_url)
@@ -72,7 +79,7 @@ fun AboutDialog(onDismiss: () -> Unit) {
                     fontWeight = FontWeight.Bold
                 )
                 Text(
-                    text = stringResource(R.string.version_text),
+                    text = "v$versionName",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )

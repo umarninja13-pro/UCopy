@@ -1,0 +1,6 @@
+U Copy v1.1.0 - Stability & Trash Update
+- NEW: Recycle Bin (Trash) to recover deleted notes
+- NEW: Quick App Shortcuts (New Note, To-Do, Trash)
+- Fixed: Data loss issue during app updates
+- Faster: Settings and theme changes are now instant
+- Smoother: Fixed memory leaks and UI glitches

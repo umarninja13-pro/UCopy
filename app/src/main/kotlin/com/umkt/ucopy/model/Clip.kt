@@ -16,5 +16,7 @@ data class Clip(
     val isPinned: Boolean = false,
     val category: String? = null, // Now acts as Label
     val isTodo: Boolean = false,
-    val todoItems: List<Task> = emptyList()
+    val todoItems: List<Task> = emptyList(),
+    val isDeleted: Boolean = false,
+    val deletedAt: Long? = null
 )

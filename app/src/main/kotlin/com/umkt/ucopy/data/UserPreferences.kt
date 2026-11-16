@@ -6,12 +6,15 @@ import androidx.datastore.preferences.core.*
 import androidx.datastore.preferences.preferencesDataStore
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import java.util.concurrent.ConcurrentHashMap
 
 val Context.dataStore: DataStore<Preferences> by preferencesDataStore(name = "user_prefs")
+
+private val prefsWriteScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
 object PreferencesCache {
     val map = ConcurrentHashMap<String, Any>()
@@ -67,19 +70,19 @@ class UserPreferences(private val context: Context) {
     fun getString(key: String, default: String): String = PreferencesCache.map[key] as? String ?: default
     fun putString(key: String, value: String) {
         PreferencesCache.map[key] = value
-        runBlocking(Dispatchers.IO) { context.dataStore.edit { it[stringPreferencesKey(key)] = value } }
+        prefsWriteScope.launch { context.dataStore.edit { it[stringPreferencesKey(key)] = value } }
     }
 
     fun getBoolean(key: String, default: Boolean): Boolean = PreferencesCache.map[key] as? Boolean ?: default
     fun putBoolean(key: String, value: Boolean) {
         PreferencesCache.map[key] = value
-        runBlocking(Dispatchers.IO) { context.dataStore.edit { it[booleanPreferencesKey(key)] = value } }
+        prefsWriteScope.launch { context.dataStore.edit { it[booleanPreferencesKey(key)] = value } }
     }
 
     fun getInt(key: String, default: Int): Int = PreferencesCache.map[key] as? Int ?: default
     fun putInt(key: String, value: Int) {
         PreferencesCache.map[key] = value
-        runBlocking(Dispatchers.IO) { context.dataStore.edit { it[intPreferencesKey(key)] = value } }
+        prefsWriteScope.launch { context.dataStore.edit { it[intPreferencesKey(key)] = value } }
     }
 
     fun getStringSet(key: String, default: Set<String>): Set<String> {
@@ -88,14 +91,18 @@ class UserPreferences(private val context: Context) {
     }
     fun putStringSet(key: String, value: Set<String>) {
         PreferencesCache.map[key] = value
-        runBlocking(Dispatchers.IO) { context.dataStore.edit { it[stringSetPreferencesKey(key)] = value } }
+        prefsWriteScope.launch { context.dataStore.edit { it[stringSetPreferencesKey(key)] = value } }
     }
 
     fun getStringOrNull(key: String): String? = PreferencesCache.map[key] as? String
     
     fun remove(key: String) {
         PreferencesCache.map.remove(key)
-        runBlocking(Dispatchers.IO) { context.dataStore.edit { it.remove(stringPreferencesKey(key)) } }
+        prefsWriteScope.launch {
+            context.dataStore.edit { prefs ->
+                prefs.asMap().keys.filter { it.name == key }.forEach { prefs.remove(it) }
+            }
+        }
     }
 
     fun getAll(): Map<String, Any?> = PreferencesCache.map.toMap()

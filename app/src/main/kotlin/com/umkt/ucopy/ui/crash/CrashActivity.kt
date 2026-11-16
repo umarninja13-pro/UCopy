@@ -171,9 +171,13 @@ fun CrashScreen(errorText: String, onRestart: () -> Unit) {
             Button(
                 onClick = {
                     try {
+                        val version = try {
+                            context.packageManager.getPackageInfo(context.packageName, 0).versionName ?: "1.1.0"
+                        } catch (_: Exception) { "1.1.0" }
+                        
                         val issueTitle = "Crash Report: ${errorText.lines().firstOrNull()?.take(50) ?: "Unknown"}"
                         // GitHub URL max length is around 8KB, so we truncate the body to 1500 chars to be safe
-                        val issueBody = "**App Version:** 1.0.0\n\n**Device:** ${android.os.Build.MANUFACTURER} ${android.os.Build.MODEL}\n\n**Crash Log:**\n```kotlin\n${errorText.take(1500)}\n```"
+                        val issueBody = "**App Version:** $version\n\n**Device:** ${android.os.Build.MANUFACTURER} ${android.os.Build.MODEL}\n\n**Crash Log:**\n```kotlin\n${errorText.take(1500)}\n```"
                         
                         val encodedTitle = java.net.URLEncoder.encode(issueTitle, "UTF-8")
                         val encodedBody = java.net.URLEncoder.encode(issueBody, "UTF-8")

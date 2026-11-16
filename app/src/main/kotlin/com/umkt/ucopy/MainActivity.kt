@@ -32,9 +32,43 @@ import com.umkt.ucopy.R
 class MainActivity : AppCompatActivity() {
 
     private var _sharedItemToOpen by mutableStateOf<Clip?>(null)
+    private var _refreshTrigger by mutableStateOf(0)
 
     private fun handleIntent(intent: android.content.Intent?) {
         if (intent == null) return
+        if (intent.action == "com.umkt.ucopy.NEW_NOTE") {
+            _sharedItemToOpen = Clip(
+                id = "",
+                title = "",
+                content = "",
+                timestamp = System.currentTimeMillis()
+            )
+            intent.action = null
+            return
+        }
+        if (intent.action == "com.umkt.ucopy.NEW_TODO") {
+            _sharedItemToOpen = Clip(
+                id = "",
+                title = "",
+                content = "",
+                timestamp = System.currentTimeMillis(),
+                isTodo = true
+            )
+            intent.action = null
+            return
+        }
+        if (intent.action == "com.umkt.ucopy.OPEN_TRASH") {
+            startActivity(android.content.Intent(this, com.umkt.ucopy.ui.trash.TrashActivity::class.java))
+            intent.action = null
+            return
+        }
+        val clipJson = intent.getStringExtra("open_clip")
+        if (!clipJson.isNullOrBlank()) {
+            try {
+                _sharedItemToOpen = json.decodeFromString(clipJson)
+            } catch (_: Exception) { }
+            return
+        }
         if (intent.action == android.content.Intent.ACTION_SEND && intent.type == "text/plain") {
             val sharedText = intent.getStringExtra(android.content.Intent.EXTRA_TEXT)
             val sharedSubject = intent.getStringExtra(android.content.Intent.EXTRA_SUBJECT)
@@ -46,12 +80,6 @@ class MainActivity : AppCompatActivity() {
                     timestamp = System.currentTimeMillis()
                 )
             }
-        }
-        val clipJson = intent.getStringExtra("open_clip")
-        if (!clipJson.isNullOrBlank()) {
-            try {
-                _sharedItemToOpen = json.decodeFromString(clipJson)
-            } catch (_: Exception) { }
         }
     }
 
@@ -71,8 +99,11 @@ class MainActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         handleIntent(intent)
+        setupShortcuts()
 
         val prefs = UserPreferences(this)
+        val currentVersion = getAppVersion()
+        val initialShowWhatsNew = prefs.getString("last_seen_version", "") != currentVersion
 
         // Service state is managed by the service itself now for faster startup
 
@@ -114,6 +145,7 @@ class MainActivity : AppCompatActivity() {
                 ) 
             }
             var clipToOpen by remember { mutableStateOf(initialClipToOpen) }
+            var showWhatsNew by remember { mutableStateOf(initialShowWhatsNew) }
 
             val view = LocalView.current
             val window = (view.context as? Activity)?.window
@@ -133,9 +165,9 @@ class MainActivity : AppCompatActivity() {
             }
 
             LaunchedEffect(selectedThemeMode) {
-                while (true) {
-                    delay(60000)
-                    if (selectedThemeMode == ThemeMode.TIME_BASED) {
+                if (selectedThemeMode == ThemeMode.TIME_BASED) {
+                    while (true) {
+                        delay(60000)
                         configVersion++
                     }
                 }
@@ -176,7 +208,7 @@ class MainActivity : AppCompatActivity() {
                     }
                 }
 
-                val viewModel: ClipViewModel = viewModel()
+                val viewModel: ClipViewModel = viewModel(key = "vm_$_refreshTrigger")
                 HomeScreen(
                     viewModel = viewModel,
                     themeMode = selectedThemeMode,
@@ -225,6 +257,14 @@ class MainActivity : AppCompatActivity() {
                         prefs.putBoolean("show_list_animations", newPrefs.showListAnimations)
                     }
                 )
+                if (showWhatsNew) {
+                    com.umkt.ucopy.ui.whatsnew.WhatsNewDialog(
+                        onDismiss = {
+                            showWhatsNew = false
+                            prefs.putString("last_seen_version", currentVersion)
+                        }
+                    )
+                }
             }
             }
         }
@@ -237,8 +277,42 @@ class MainActivity : AppCompatActivity() {
                 android.content.res.Configuration.UI_MODE_NIGHT_MASK
     }
 
+    private fun setupShortcuts() {
+        try {
+            val sm = getSystemService(android.content.pm.ShortcutManager::class.java) ?: return
+            val newNoteShortcut = android.content.pm.ShortcutInfo.Builder(this, "new_note")
+                .setShortLabel(getString(R.string.shortcut_new_note_short))
+                .setLongLabel(getString(R.string.shortcut_new_note_long))
+                .setIcon(android.graphics.drawable.Icon.createWithResource(this, android.R.drawable.ic_input_add))
+                .setIntent(
+                    android.content.Intent(this, MainActivity::class.java)
+                        .setAction("com.umkt.ucopy.NEW_NOTE")
+                )
+                .build()
+
+            val trashShortcut = android.content.pm.ShortcutInfo.Builder(this, "trash")
+                .setShortLabel(getString(R.string.shortcut_trash_short))
+                .setLongLabel(getString(R.string.shortcut_trash_long))
+                .setIcon(android.graphics.drawable.Icon.createWithResource(this, android.R.drawable.ic_menu_delete))
+                .setIntent(android.content.Intent(this, com.umkt.ucopy.ui.trash.TrashActivity::class.java))
+                .build()
+
+            sm.dynamicShortcuts = listOf(newNoteShortcut, trashShortcut)
+        } catch (_: Exception) { }
+    }
+
+    private fun getAppVersion(): String {
+        return try {
+            packageManager.getPackageInfo(packageName, 0).versionName ?: "1.1.0"
+        } catch (_: Exception) { "1.1.0" }
+    }
+
     override fun onResume() {
         super.onResume()
+        if (com.umkt.ucopy.data.ClipRepository.dataChangedFromTrash) {
+            com.umkt.ucopy.data.ClipRepository.dataChangedFromTrash = false
+            _refreshTrigger++
+        }
         ClipboardListenerService.isAppVisible = true
         
         // Force widget update when app opens

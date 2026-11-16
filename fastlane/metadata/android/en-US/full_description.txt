@@ -7,3 +7,6 @@ Features:
 - Custom Widgets
 - 4 Design Modes
 - Import/Export data
+- Recycle Bin (Trash) to recover deleted notes
+- Quick App Shortcuts for notes and to-dos
+- Pin important notes to the top

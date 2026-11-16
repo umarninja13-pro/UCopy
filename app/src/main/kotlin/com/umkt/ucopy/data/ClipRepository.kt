@@ -5,6 +5,7 @@ import com.umkt.ucopy.model.Clip
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.decodeFromString
@@ -13,6 +14,11 @@ import java.io.File
 import java.util.UUID
 
 class ClipRepository(private val context: Context) {
+
+    companion object {
+        @Volatile
+        var dataChangedFromTrash: Boolean = false
+    }
 
     private val dao = AppDatabase.getDatabase(context).clipDao()
     private val json = Json { ignoreUnknownKeys = true }
@@ -45,6 +51,8 @@ class ClipRepository(private val context: Context) {
 
     suspend fun getAll(): List<Clip> = withContext(Dispatchers.IO) {
         migrationDone.await()
+        val cutoff = System.currentTimeMillis() - 30L * 24 * 60 * 60 * 1000
+        dao.deleteOldTrash(cutoff)
         val items = dao.getAll()
         val alreadyInitialized = hasBeenInitialized()
         if (items.isEmpty() && !alreadyInitialized) {
@@ -86,15 +94,60 @@ class ClipRepository(private val context: Context) {
     }
 
     suspend fun delete(id: String) = withContext(Dispatchers.IO) {
-        dao.deleteById(id)
+        softDelete(id)
     }
 
     suspend fun deleteAll(ids: List<String>) = withContext(Dispatchers.IO) {
+        softDeleteAll(ids)
+    }
+
+    suspend fun deletePermanently(id: String) = withContext(Dispatchers.IO) {
+        dao.deleteById(id)
+    }
+
+    suspend fun deletePermanentlyAll(ids: List<String>) = withContext(Dispatchers.IO) {
         dao.deleteByIds(ids)
     }
 
     suspend fun clearAll() = withContext(Dispatchers.IO) {
         dao.deleteAll()
+    }
+
+    suspend fun softDelete(id: String) = withContext(Dispatchers.IO) {
+        val current = dao.getById(id)
+        if (current != null) {
+            dao.update(current.copy(isDeleted = true, deletedAt = System.currentTimeMillis()))
+        }
+    }
+
+    suspend fun softDeleteAll(ids: List<String>) = withContext(Dispatchers.IO) {
+        val now = System.currentTimeMillis()
+        ids.forEach { id ->
+            val current = dao.getById(id)
+            if (current != null) {
+                dao.update(current.copy(isDeleted = true, deletedAt = now))
+            }
+        }
+    }
+
+    suspend fun getTrash(): List<Clip> = withContext(Dispatchers.IO) {
+        migrationDone.await()
+        dao.getTrash()
+    }
+
+    fun getTrashFlow(): Flow<List<Clip>> = dao.getTrashFlow()
+
+    suspend fun purgeOldTrash() = withContext(Dispatchers.IO) {
+        val cutoff = System.currentTimeMillis() - 30L * 24 * 60 * 60 * 1000
+        dao.deleteOldTrash(cutoff)
+    }
+
+    suspend fun restoreFromTrash(id: String) = withContext(Dispatchers.IO) {
+        dao.restoreFromTrash(id)
+    }
+
+    suspend fun emptyTrash() = withContext(Dispatchers.IO) {
+        dao.emptyTrash()
     }
 
     suspend fun getAllCategories(): List<String> = withContext(Dispatchers.IO) {

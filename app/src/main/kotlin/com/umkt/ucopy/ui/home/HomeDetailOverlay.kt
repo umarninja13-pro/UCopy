@@ -15,6 +15,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.platform.LocalContext
+import java.util.UUID
 import com.umkt.ucopy.model.Clip
 import com.umkt.ucopy.R
 import com.umkt.ucopy.ui.detail.DetailScreen
@@ -61,18 +62,30 @@ fun HomeDetailOverlay(
         if (currentSelected != null) {
             val isNewBlank = currentSelected.id.isEmpty()
             if (isNewBlank) {
+                val newNoteId = remember(currentSelected) { UUID.randomUUID().toString() }
                 DetailScreen(
                     item = currentSelected,
                     themeMode = themeMode,
                     onDismiss = onDismiss,
-                    onCopy = { },
-                    onShare = { },
+                    onCopy = { text -> viewModel.copyToClipboard(text) },
+                    onShare = { text -> shareItem(context, currentSelected.copy(content = text)) },
                     onEdit = { title, content, category, todoItems ->
-                        viewModel.addOrUpdateItem(title, content, category = category, todoItems = todoItems, isTodo = currentSelected.isTodo)
+                        viewModel.addOrUpdateItem(
+                            title, content, newNoteId,
+                            category = category, todoItems = todoItems,
+                            isTodo = currentSelected.isTodo, showSnackbar = false
+                        )
                         onDismiss()
                     },
+                    onAutoSave = { title, content, category, todoItems ->
+                        viewModel.addOrUpdateItem(
+                            title, content, newNoteId,
+                            category = category, todoItems = todoItems,
+                            isTodo = currentSelected.isTodo, showSnackbar = false
+                        )
+                    },
                     onDelete = onDismiss,
-                    onPinToggle = { },
+                    onPinToggle = { viewModel.togglePin(newNoteId) },
                     categories = categories,
                     initialEditing = true,
                     viewModel = viewModel
@@ -82,8 +95,8 @@ fun HomeDetailOverlay(
                     item = currentSelected,
                     themeMode = themeMode,
                     onDismiss = onDismiss,
-                    onCopy = { viewModel.copyToClipboard(currentSelected.content) },
-                    onShare = { shareItem(context, currentSelected) },
+                    onCopy = { text -> viewModel.copyToClipboard(text) },
+                    onShare = { text -> shareItem(context, currentSelected.copy(content = text)) },
                     onEdit = { title, content, category, todoItems ->
                         viewModel.addOrUpdateItem(
                             title,

@@ -4,7 +4,9 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.outlined.Label
+import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.ContentCopy
+import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.PushPin
 import androidx.compose.material.icons.filled.Share
@@ -34,7 +36,9 @@ fun DetailTopBar(
     onPinClick: () -> Unit,
     hasCheckedItems: Boolean,
     onUntickAll: () -> Unit,
-    onDeleteTicked: () -> Unit
+    onDeleteTicked: () -> Unit,
+    isEditing: Boolean,
+    onToggleEdit: () -> Unit
 ) {
     TopAppBar(
         title = { },
@@ -44,6 +48,13 @@ fun DetailTopBar(
             }
         },
         actions = {
+            IconButton(onClick = onToggleEdit) {
+                Icon(
+                    if (isEditing) Icons.Default.Check else Icons.Default.Edit,
+                    contentDescription = stringResource(if (isEditing) R.string.done else R.string.edit),
+                    tint = if (isEditing) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
             if (item.isTodo) {
                 Box {
                     IconButton(onClick = { onShowTodoMenuChange(true) }) {

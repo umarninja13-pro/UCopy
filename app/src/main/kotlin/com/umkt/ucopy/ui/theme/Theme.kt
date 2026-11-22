@@ -85,7 +85,7 @@ fun UCopyTheme(
     CompositionLocalProvider(LocalDesignConfig provides design) {
         MaterialTheme(
             colorScheme = animatedColorScheme,
-            typography = Typography(),
+            typography = com.umkt.ucopy.ui.theme.Typography,
             shapes = shapes,
             content = content
         )

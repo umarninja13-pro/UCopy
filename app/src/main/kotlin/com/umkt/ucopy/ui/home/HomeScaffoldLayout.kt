@@ -4,7 +4,9 @@ import androidx.compose.ui.res.stringResource
 import com.umkt.ucopy.R
 
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.material3.DrawerState
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
@@ -96,7 +98,8 @@ fun HomeScaffoldLayout(
     ) {
         Box(modifier = Modifier.fillMaxSize()) {
             Scaffold(
-                snackbarHost = { SnackbarHost(snackbarHostState) },
+                contentWindowInsets = WindowInsets(0, 0, 0, 0),
+                snackbarHost = { SnackbarHost(snackbarHostState, modifier = Modifier.navigationBarsPadding()) },
                 topBar = {
                     HomeTopBar(
                         onMenuClick = { scopeDrawer.launch { drawerState.open() } },

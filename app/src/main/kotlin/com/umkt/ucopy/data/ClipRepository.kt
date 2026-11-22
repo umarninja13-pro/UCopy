@@ -151,7 +151,7 @@ class ClipRepository(private val context: Context) {
     }
 
     suspend fun getAllCategories(): List<String> = withContext(Dispatchers.IO) {
-        dao.getAll().flatMap { it.category?.split(", ") ?: emptyList() }
+        dao.getCategoryStrings().flatMap { it.split(", ") }
             .filter { it.isNotBlank() }
             .distinct()
     }

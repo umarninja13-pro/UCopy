@@ -35,6 +35,7 @@ class ClipboardListenerService : Service() {
     private var cacheTimestamp: Long = 0
     private val CACHE_DURATION_MS = 5000L
     private val json = Json { ignoreUnknownKeys = true }
+    private val repo by lazy { ClipRepository(applicationContext) }
 
     companion object {
         const val CHANNEL_ID = "clipboard_listener_channel"
@@ -84,7 +85,6 @@ class ClipboardListenerService : Service() {
     private fun refreshCache() {
         serviceScope.launch {
             try {
-                val repo = ClipRepository(applicationContext)
                 cachedItems = repo.getAll()
                 cacheTimestamp = System.currentTimeMillis()
             } catch (e: Exception) {
@@ -230,7 +230,7 @@ class ClipboardListenerService : Service() {
     }
 
     private fun handleClipboardContent(text: String, source: String) {
-        CoroutineScope(Dispatchers.IO).launch {
+        serviceScope.launch {
             try {
                 val items = getCachedItems()
                 val alreadySaved = items.any { it.content == text }
@@ -264,7 +264,7 @@ class ClipboardListenerService : Service() {
 
     private fun showSaveNotification(text: String, source: String) {
         val openIntent = Intent(this, MainActivity::class.java)
-        openIntent.flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
+        openIntent.flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_SINGLE_TOP
         openIntent.putExtra("clip_text", text)
         openIntent.putExtra("clip_source", source)
         val pendingOpenIntent = PendingIntent.getActivity(
@@ -319,7 +319,7 @@ class ClipboardListenerService : Service() {
 
     private fun showGenericClipNotification() {
         val openIntent = Intent(this, MainActivity::class.java)
-        openIntent.flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
+        openIntent.flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_SINGLE_TOP
         val pendingOpenIntent = PendingIntent.getActivity(
             this, 0, openIntent,
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
@@ -379,7 +379,7 @@ class ClipboardListenerService : Service() {
                 sendBroadcast(broadcastIntent)
 
                 val openDetailIntent = Intent(this@ClipboardListenerService, MainActivity::class.java).apply {
-                    flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
+                    flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_SINGLE_TOP
                     putExtra("open_clip", jsonString)
                 }
                 val pendingDetailIntent = PendingIntent.getActivity(
@@ -431,7 +431,7 @@ class ClipboardListenerService : Service() {
 
     private fun createPersistentNotification(): Notification {
         val openIntent = Intent(this, MainActivity::class.java)
-        openIntent.flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
+        openIntent.flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_SINGLE_TOP
         val pendingOpenIntent = PendingIntent.getActivity(
             this, 0, openIntent,
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE

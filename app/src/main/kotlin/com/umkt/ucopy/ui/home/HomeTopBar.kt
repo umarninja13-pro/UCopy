@@ -140,29 +140,27 @@ fun HomeTopBar(
                                     verticalAlignment = Alignment.CenterVertically,
                                     modifier = Modifier.padding(end = 4.dp) 
                                 ) {
-                                    if (design.mode == DesignMode.DEFAULT) {
-                                        Box(
-                                            modifier = Modifier
-                                                .size(40.dp)
-                                                .clip(CircleShape)
-                                                .combinedClickable(
-                                                    onClick = onViewToggle,
-                                                    onLongClick = onViewLongClick
-                                                ),
-                                            contentAlignment = Alignment.Center
-                                        ) {
-                                            Icon(
-                                                imageVector = when (currentViewDensity) {
-                                                    ViewDensity.COMPACT -> Icons.Default.ViewCompact
-                                                    ViewDensity.COMFORTABLE -> Icons.Default.ViewAgenda
-                                                    ViewDensity.GRID -> Icons.Default.GridView
-                                                    ViewDensity.DETAILED -> Icons.Default.ViewDay
-                                                },
-                                                contentDescription = stringResource(R.string.toggle_view),
-                                                tint = MaterialTheme.colorScheme.onSurface,
-                                                modifier = Modifier.size(24.dp)
-                                            )
-                                        }
+                                    Box(
+                                        modifier = Modifier
+                                            .size(40.dp)
+                                            .clip(CircleShape)
+                                            .combinedClickable(
+                                                onClick = onViewToggle,
+                                                onLongClick = onViewLongClick
+                                            ),
+                                        contentAlignment = Alignment.Center
+                                    ) {
+                                        Icon(
+                                            imageVector = when (currentViewDensity) {
+                                                ViewDensity.COMPACT -> Icons.Default.ViewCompact
+                                                ViewDensity.COMFORTABLE -> Icons.Default.ViewAgenda
+                                                ViewDensity.GRID -> Icons.Default.GridView
+                                                ViewDensity.DETAILED -> Icons.Default.ViewDay
+                                            },
+                                            contentDescription = stringResource(R.string.toggle_view),
+                                            tint = MaterialTheme.colorScheme.onSurface,
+                                            modifier = Modifier.size(24.dp)
+                                        )
                                     }
 
                                     IconButton(

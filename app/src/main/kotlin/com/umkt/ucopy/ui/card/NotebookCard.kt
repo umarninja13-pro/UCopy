@@ -29,6 +29,7 @@ import com.umkt.ucopy.model.Clip
 import com.umkt.ucopy.ui.design.LocalActionPreferences
 import java.text.SimpleDateFormat
 import java.util.*
+import com.umkt.ucopy.ui.common.ViewDensity
 import com.umkt.ucopy.ui.markdown.MarkdownText
 
 @OptIn(ExperimentalFoundationApi::class)
@@ -46,9 +47,11 @@ fun NotebookCard(
     onCategoryClick: (String) -> Unit = {},
     onClick: () -> Unit,
     onLongClick: () -> Unit,
+    viewDensity: ViewDensity = ViewDensity.COMFORTABLE,
     modifier: Modifier = Modifier
 ) {
     val actionPrefs = LocalActionPreferences.current
+    val spec = densitySpec(viewDensity, 16.dp, 6.dp, 16.dp, 3)
     val isLightTheme = MaterialTheme.colorScheme.background.luminance() > 0.5f
 
     val spineColorsLight = listOf(
@@ -75,7 +78,7 @@ fun NotebookCard(
     Card(
         modifier = modifier
             .fillMaxWidth()
-            .padding(horizontal = 16.dp, vertical = 6.dp)
+            .padding(horizontal = spec.outerHorizontal, vertical = spec.outerVertical)
             .combinedClickable(onClick = onClick, onLongClick = onLongClick),
         shape = RoundedCornerShape(16.dp),
         colors = CardDefaults.cardColors(containerColor = cardBgColor),
@@ -91,7 +94,7 @@ fun NotebookCard(
                     .background(spineColor)
             )
 
-            Column(modifier = Modifier.weight(1f).padding(16.dp)) {
+            Column(modifier = Modifier.weight(1f).padding(spec.inner)) {
                 
                 Row(
                     modifier = Modifier.fillMaxWidth(),
@@ -100,10 +103,10 @@ fun NotebookCard(
                     Column(modifier = Modifier.weight(1f)) {
                         Text(
                             text = item.title.ifEmpty { stringResource(R.string.untitled) },
-                            style = MaterialTheme.typography.titleLarge,
+                            style = if (spec.compact) MaterialTheme.typography.titleSmall else MaterialTheme.typography.titleLarge,
                             fontWeight = FontWeight.Bold,
                             color = if (isSelected) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurface,
-                            maxLines = 2,
+                            maxLines = spec.titleLines,
                             overflow = TextOverflow.Ellipsis
                         )
                         Spacer(modifier = Modifier.height(4.dp))
@@ -128,7 +131,7 @@ fun NotebookCard(
                     MarkdownText(
                         markdown = item.content.take(2000).ifEmpty { stringResource(R.string.no_content) },
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        maxLines = 3,
+                        maxLines = spec.previewLines,
                         modifier = Modifier.fillMaxWidth(),
                         makeLinksClickable = false
                     )
@@ -137,7 +140,7 @@ fun NotebookCard(
                         text = item.content.take(150).replace("\n", " ").ifEmpty { stringResource(R.string.no_content) },
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        maxLines = 3,
+                        maxLines = spec.previewLines,
                         overflow = TextOverflow.Ellipsis,
                         lineHeight = MaterialTheme.typography.bodyMedium.lineHeight * 1.2f
                     )

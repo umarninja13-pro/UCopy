@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.platform.LocalContext
@@ -85,6 +86,8 @@ fun MarkdownText(
         spannedState.value
     }
 
+    val fallbackText = remember(markdown) { SpannableStringBuilder(markdown) }
+
     Box(modifier = modifier.fillMaxWidth().wrapContentHeight()) {
         AndroidView(
             factory = { ctx ->
@@ -159,24 +162,15 @@ fun MarkdownText(
                 }
             },
             update = { textView ->
-                if (finalSpanned != null) {
-                    if (textView.text != finalSpanned) {
-                        textView.text = finalSpanned
-                        textView.maxLines = maxLines
-                        textView.ellipsize = android.text.TextUtils.TruncateAt.END
-                    }
-                } else {
-                    // Fallback to raw text while parsing to prevent jumping
-                    val plain = SpannableStringBuilder(markdown)
-                    if (textView.text != plain) {
-                        textView.text = plain
-                        textView.maxLines = maxLines
-                        textView.ellipsize = android.text.TextUtils.TruncateAt.END
-                    }
+                val target: CharSequence = finalSpanned ?: fallbackText
+                if (textView.tag !== target) {
+                    textView.tag = target
+                    textView.text = target
+                    textView.ellipsize = android.text.TextUtils.TruncateAt.END
+                    textView.requestLayout()
                 }
-                textView.setTextColor(textColorArgb)
-                textView.requestLayout()
-                textView.invalidate()
+                if (textView.maxLines != maxLines) textView.maxLines = maxLines
+                if (textView.currentTextColor != textColorArgb) textView.setTextColor(textColorArgb)
             },
             modifier = Modifier.fillMaxWidth().wrapContentHeight()
         )
@@ -198,10 +192,11 @@ private fun buildFinalSpanned(
 
     if (highlightQuery.isNotBlank()) {
         val text = builder.toString()
+        val lowerText = text.lowercase()
         val query = highlightQuery.lowercase()
         var startIndex = 0
-        while (startIndex < text.length) {
-            val index = text.lowercase().indexOf(query, startIndex)
+        while (startIndex < lowerText.length) {
+            val index = lowerText.indexOf(query, startIndex)
             if (index == -1) break
             val end = index + query.length
             builder.setSpan(
@@ -242,4 +237,202 @@ private fun buildFinalSpanned(
     }
 
     return builder
+}
+
+
+private class SelectionAutoScrollTextView(context: android.content.Context) : android.widget.TextView(context) {
+    private var ready = false
+    private var prevStart = -1
+    private var prevEnd = -1
+    private var activeOffset = -1
+    private var burstUntil = 0L
+    private var running = false
+    private var fingerDown = false
+    private var gestureSelecting = false
+    private var ownChange = false
+    private var fingerX = 0f
+    private var fingerViewportY = 0f
+    private var handleTopY = 0f
+    private var handleBottomY = 0f
+    private val density = context.resources.displayMetrics.density
+
+    private val tick = object : Runnable {
+        override fun run() {
+            if (step()) postOnAnimation(this) else running = false
+        }
+    }
+
+    init {
+        ready = true
+    }
+
+    private fun startTicker() {
+        if (!running) {
+            running = true
+            postOnAnimation(tick)
+        }
+    }
+
+    private fun updateFinger(event: android.view.MotionEvent) {
+        val sv = parent as? android.widget.ScrollView
+        fingerX = event.x
+        fingerViewportY = event.y - (sv?.scrollY ?: 0)
+    }
+
+    override fun onTouchEvent(event: android.view.MotionEvent): Boolean {
+        when (event.actionMasked) {
+            android.view.MotionEvent.ACTION_DOWN -> {
+                fingerDown = true
+                gestureSelecting = false
+                updateFinger(event)
+            }
+            android.view.MotionEvent.ACTION_MOVE -> {
+                updateFinger(event)
+                if (gestureSelecting && fingerDown) startTicker()
+            }
+            android.view.MotionEvent.ACTION_UP, android.view.MotionEvent.ACTION_CANCEL -> {
+                fingerDown = false
+                gestureSelecting = false
+            }
+        }
+        return super.onTouchEvent(event)
+    }
+
+    override fun onSelectionChanged(selStart: Int, selEnd: Int) {
+        super.onSelectionChanged(selStart, selEnd)
+        if (!ready) return
+        if (!ownChange) {
+            if (prevStart == prevEnd && selStart != selEnd) {
+                parent?.requestDisallowInterceptTouchEvent(true)
+                if (fingerDown) gestureSelecting = true
+            }
+            if (!gestureSelecting && prevStart != prevEnd && selStart != selEnd) {
+                val moved = when {
+                    selEnd != prevEnd && selStart == prevStart -> selEnd
+                    selStart != prevStart && selEnd == prevEnd -> selStart
+                    else -> -1
+                }
+                val sv = parent as? android.widget.ScrollView
+                val lay = layout
+                if (moved >= 0 && sv != null && lay != null) {
+                    val line = lay.getLineForOffset(moved)
+                    handleTopY = (lay.getLineTop(line) + totalPaddingTop - sv.scrollY).toFloat()
+                    handleBottomY = (lay.getLineBottom(line) + totalPaddingTop - sv.scrollY).toFloat()
+                    activeOffset = moved
+                    burstUntil = android.os.SystemClock.uptimeMillis() + 500
+                    startTicker()
+                }
+            }
+        }
+        prevStart = selStart
+        prevEnd = selEnd
+    }
+
+    override fun onDetachedFromWindow() {
+        removeCallbacks(tick)
+        running = false
+        super.onDetachedFromWindow()
+    }
+
+    private fun step(): Boolean {
+        val sv = parent as? android.widget.ScrollView ?: return false
+        val lay = layout ?: return false
+        val sp = text as? android.text.Spannable ?: return false
+        val fingerMode = gestureSelecting && fingerDown
+        val topY: Float
+        val bottomY: Float
+        if (fingerMode) {
+            topY = fingerViewportY
+            bottomY = fingerViewportY
+        } else {
+            if (activeOffset < 0 || activeOffset > sp.length) return false
+            if (android.os.SystemClock.uptimeMillis() > burstUntil) return false
+            topY = handleTopY
+            bottomY = handleBottomY
+        }
+        val navInset = androidx.core.view.ViewCompat.getRootWindowInsets(this)
+            ?.getInsets(androidx.core.view.WindowInsetsCompat.Type.navigationBars())?.bottom ?: 0
+        val edge = (96 * density).toInt()
+        val bottomZone = sv.height - navInset - edge
+        val dy = when {
+            bottomY > bottomZone ->
+                ((2f + 8f * ((bottomY - bottomZone) / edge).coerceIn(0f, 1.5f)) * density).toInt()
+            topY < edge ->
+                -((2f + 8f * ((edge - topY) / edge).coerceIn(0f, 1.5f)) * density).toInt()
+            else -> 0
+        }
+        if (dy == 0) return false
+        val before = sv.scrollY
+        sv.scrollBy(0, dy)
+        if (sv.scrollY == before) return false
+        if (fingerMode) {
+            val localY = (fingerViewportY + sv.scrollY - totalPaddingTop).toInt().coerceIn(0, lay.height)
+            val fingerLine = lay.getLineForVertical(localY)
+            val off = lay.getOffsetForHorizontal(fingerLine, fingerX - totalPaddingLeft)
+            val s = minOf(selectionStart, selectionEnd)
+            val e = maxOf(selectionStart, selectionEnd)
+            val anchor = if (kotlin.math.abs(s - off) > kotlin.math.abs(e - off)) s else e
+            val other = if (anchor == s) e else s
+            if (off != other) {
+                ownChange = true
+                android.text.Selection.setSelection(sp, anchor, off)
+                ownChange = false
+            }
+        }
+        return true
+    }
+}
+
+private const val MENU_SELECT_PARAGRAPH = 0x7001
+
+private object SelectableTextMovement : android.text.method.BaseMovementMethod() {
+    override fun canSelectArbitrarily(): Boolean = true
+}
+
+@Composable
+fun SelectableMarkdownView(
+    markdown: String,
+    modifier: Modifier = Modifier,
+    onTap: () -> Unit
+) {
+    val context = LocalContext.current
+    val textColorArgb = MaterialTheme.colorScheme.onBackground.toArgb()
+    val linkColorArgb = MaterialTheme.colorScheme.primary.toArgb()
+    val highlightBgColorArgb = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.4f).toArgb()
+    val markwon = remember {
+        Markwon.builder(context)
+            .usePlugin(TablePlugin.create(context))
+            .usePlugin(HtmlPlugin.create())
+            .build()
+    }
+    val currentOnTap by rememberUpdatedState(onTap)
+    val selectParagraphLabel = context.getString(com.umkt.ucopy.R.string.select_paragraph)
+
+    fun build(): Spanned = try {
+        buildFinalSpanned(markdown, markwon, "", true, true, linkColorArgb, highlightBgColorArgb, context)
+    } catch (e: Exception) {
+        SpannableStringBuilder(markdown)
+    }
+
+    val spanned: Spanned? = if (markdown.length < 8000) {
+        remember(markdown, linkColorArgb) { build() }
+    } else {
+        produceState<Spanned?>(null, markdown, linkColorArgb) {
+            value = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Default) { build() }
+        }.value
+    }
+
+    val highlightColorArgb = MaterialTheme.colorScheme.primary.copy(alpha = 0.30f).toArgb()
+
+    AndroidView(
+        modifier = modifier.clipToBounds(),
+        factory = { ctx -> ReaderSelectionLayout(ctx) },
+        update = { layout ->
+            layout.onTap = { currentOnTap() }
+            layout.highlightColor = highlightColorArgb
+            layout.handleColor = linkColorArgb
+            layout.setTextColor(textColorArgb)
+            if (spanned != null && layout.contentTag !== spanned) layout.setContent(spanned)
+        }
+    )
 }

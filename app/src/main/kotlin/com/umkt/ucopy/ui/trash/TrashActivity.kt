@@ -68,7 +68,10 @@ class TrashActivity : ComponentActivity() {
                         @Suppress("DEPRECATION")
                         w.statusBarColor = android.graphics.Color.TRANSPARENT
                         @Suppress("DEPRECATION")
-                        w.navigationBarColor = appBackground.toArgb()
+                        w.navigationBarColor = android.graphics.Color.TRANSPARENT
+                        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.Q) {
+                            w.isNavigationBarContrastEnforced = false
+                        }
                         val controller = WindowInsetsControllerCompat(w, view)
                         controller.isAppearanceLightStatusBars = !effectiveDark
                         controller.isAppearanceLightNavigationBars = !effectiveDark

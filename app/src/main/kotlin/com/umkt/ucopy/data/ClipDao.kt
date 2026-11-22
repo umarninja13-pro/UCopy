@@ -13,6 +13,9 @@ interface ClipDao {
     @Query("SELECT * FROM clips WHERE isDeleted = 0 ORDER BY isPinned DESC, timestamp DESC")
     suspend fun getAll(): List<Clip>
 
+    @Query("SELECT DISTINCT category FROM clips WHERE isDeleted = 0 AND category IS NOT NULL AND category != ''")
+    suspend fun getCategoryStrings(): List<String>
+
     @Query("SELECT * FROM clips WHERE id = :id")
     suspend fun getById(id: String): Clip?
 

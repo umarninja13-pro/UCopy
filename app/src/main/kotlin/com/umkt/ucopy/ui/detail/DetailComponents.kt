@@ -26,13 +26,14 @@ internal fun RepeatableIconButton(
 ) {
     val interactionSource = remember { MutableInteractionSource() }
     val isPressed by interactionSource.collectIsPressedAsState()
+    val latestOnClick by androidx.compose.runtime.rememberUpdatedState(onClick)
 
     LaunchedEffect(isPressed) {
         if (isPressed) {
-            onClick()
+            latestOnClick()
             delay(400L)
             while (true) {
-                onClick()
+                latestOnClick()
                 delay(80L)
             }
         }

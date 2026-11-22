@@ -26,6 +26,7 @@ import com.umkt.ucopy.model.Clip
 import com.umkt.ucopy.ui.design.LocalActionPreferences
 import java.text.SimpleDateFormat
 import java.util.*
+import com.umkt.ucopy.ui.common.ViewDensity
 import com.umkt.ucopy.ui.markdown.MarkdownText
 import com.umkt.ucopy.ui.label.LabelChips
 
@@ -44,9 +45,11 @@ fun ListCard(
     onCategoryClick: (String) -> Unit = {},
     onClick: () -> Unit,
     onLongClick: () -> Unit,
+    viewDensity: ViewDensity = ViewDensity.COMFORTABLE,
     modifier: Modifier = Modifier
 ) {
     val actionPrefs = LocalActionPreferences.current
+    val spec = densitySpec(viewDensity, 32.dp, 24.dp, 0.dp, 3)
     val dateFormat = remember { SimpleDateFormat("dd MMM, yyyy", Locale.getDefault()) }
     val formattedDate = dateFormat.format(Date(item.timestamp))
 
@@ -55,7 +58,7 @@ fun ListCard(
             .fillMaxWidth()
             .background(if (isSelected) MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.4f) else Color.Transparent)
             .combinedClickable(onClick = onClick, onLongClick = onLongClick)
-            .padding(horizontal = 32.dp, vertical = 24.dp)
+            .padding(horizontal = spec.outerHorizontal, vertical = spec.outerVertical)
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
 Text(
@@ -70,10 +73,10 @@ Text(
         
         Text(
             text = item.title.ifEmpty { stringResource(R.string.untitled) },
-            style = MaterialTheme.typography.headlineSmall,
+            style = if (spec.compact) MaterialTheme.typography.titleMedium else MaterialTheme.typography.headlineSmall,
             fontWeight = FontWeight.Bold,
             color = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface,
-            maxLines = 2,
+            maxLines = spec.titleLines,
             overflow = TextOverflow.Ellipsis
         )
         
@@ -90,7 +93,7 @@ Text(
             MarkdownText(
                 markdown = item.content.take(2000).ifEmpty { stringResource(R.string.no_content) },
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
-                maxLines = 3,
+                maxLines = spec.previewLines,
                 modifier = Modifier.fillMaxWidth(),
                 makeLinksClickable = false
             )
@@ -99,7 +102,7 @@ Text(
                 text = item.content.take(150).replace("\n", " ").ifEmpty { stringResource(R.string.no_content) },
                 style = MaterialTheme.typography.bodyLarge,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
-                maxLines = 3,
+                maxLines = spec.previewLines,
                 overflow = TextOverflow.Ellipsis,
                 lineHeight = 28.sp
             )

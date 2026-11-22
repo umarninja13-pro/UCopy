@@ -146,7 +146,7 @@ class NoteWidgetProvider : AppWidgetProvider() {
                         // Setup Quick Add Button
                         val blankNote = Clip(id = "", title = "", content = "", timestamp = System.currentTimeMillis())
                         val addIntent = Intent(context, MainActivity::class.java).apply {
-                            flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
+                            flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_SINGLE_TOP
                             putExtra("open_clip", json.encodeToString(blankNote))
                         }
                         val addPending = PendingIntent.getActivity(context, appWidgetId + 200, addIntent, PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)
@@ -154,7 +154,7 @@ class NoteWidgetProvider : AppWidgetProvider() {
 
                         // Setup Open App Click
                         val openIntent = Intent(context, MainActivity::class.java).apply {
-                            flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
+                            flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_SINGLE_TOP
                             putExtra("open_clip", json.encodeToString(note))
                         }
                         val openPending = PendingIntent.getActivity(context, appWidgetId, openIntent, PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)
@@ -181,7 +181,7 @@ class NoteWidgetProvider : AppWidgetProvider() {
                             views.setViewVisibility(R.id.widget_add_todo_row, android.view.View.VISIBLE)
                             
                             val addTodoIntent = Intent(context, WidgetAddTodoActivity::class.java).apply {
-                                flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
+                                flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_SINGLE_TOP
                                 putExtra("noteId", note.id)
                                 putExtra(AppWidgetManager.EXTRA_APPWIDGET_ID, appWidgetId)
                             }

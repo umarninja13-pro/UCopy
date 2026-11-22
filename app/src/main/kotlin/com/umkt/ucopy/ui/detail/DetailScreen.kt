@@ -3,7 +3,12 @@ package com.umkt.ucopy.ui.detail
 import androidx.compose.ui.res.stringResource
 import com.umkt.ucopy.R
 
+import androidx.activity.ComponentActivity
 import androidx.activity.compose.BackHandler
+import android.content.Context
+import android.content.ContextWrapper
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectDragGestures
@@ -15,7 +20,9 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.gestures.scrollBy
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.text.input.TextFieldState
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
@@ -42,6 +49,7 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.zIndex
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.viewinterop.AndroidView
@@ -73,8 +81,8 @@ fun DetailScreen(
     item: Clip,
     themeMode: ThemeMode,
     onDismiss: () -> Unit,
-    onCopy: () -> Unit,
-    onShare: () -> Unit,
+    onCopy: (text: String) -> Unit,
+    onShare: (text: String) -> Unit,
     onEdit: (title: String, content: String, category: String?, todoItems: List<Task>) -> Unit,
     onAutoSave: (title: String, content: String, category: String?, todoItems: List<Task>) -> Unit = { t, c, cat, todos -> onEdit(t, c, cat, todos) },
     onDelete: () -> Unit,
@@ -113,12 +121,9 @@ fun DetailScreen(
     val canRedo by undoRedoHelper.canRedo.collectAsState()
     val currentText by undoRedoHelper.text.collectAsState()
 
-    var contentFieldValue by remember {
-        mutableStateOf(TextFieldValue(currentText, selection = TextRange(currentText.length)))
-    }
+    val contentState = remember { TextFieldState(currentText) }
     var titleFieldValue by remember { mutableStateOf(TextFieldValue(title, selection = TextRange(title.length))) }
 
-    val wordCount = remember(content) { content.trim().split(Regex("\\s+")).filter { it.isNotEmpty() }.size }
     var showLargeContentWarning by remember { mutableStateOf(false) }
 
     LaunchedEffect(Unit) {
@@ -129,6 +134,50 @@ fun DetailScreen(
         }
     }
 
+    var lastSaved by remember {
+        mutableStateOf(
+            listOf<Any?>(item.title, item.content, item.category, item.todoItems.filter { it.title.isNotBlank() })
+        )
+    }
+
+    fun autoSaveNow() {
+        val validTodos = todoItems.filter { it.title.isNotBlank() }
+        if (title.isBlank() && content.isBlank() && validTodos.isEmpty()) return
+        val cat = if (selectedCategory.isNullOrBlank()) null else selectedCategory
+        val snapshot = listOf<Any?>(title, content, cat, validTodos)
+        if (snapshot == lastSaved) return
+        lastSaved = snapshot
+        onAutoSave(title, content, cat, validTodos)
+    }
+
+    val latestAutoSave by rememberUpdatedState(newValue = { autoSaveNow() })
+
+    LaunchedEffect(title, content, selectedCategory, todoItems) {
+        delay(600)
+        latestAutoSave()
+    }
+
+    val activityContext = LocalContext.current
+    DisposableEffect(activityContext) {
+        val owner = activityContext.findComponentActivity()
+        val observer = LifecycleEventObserver { _, event ->
+            if (event == Lifecycle.Event.ON_PAUSE || event == Lifecycle.Event.ON_STOP) {
+                latestAutoSave()
+            }
+        }
+        owner?.lifecycle?.addObserver(observer)
+        onDispose {
+            owner?.lifecycle?.removeObserver(observer)
+            latestAutoSave()
+        }
+    }
+
+    fun copyText(): String =
+        if (item.isTodo) {
+            todoItems.filter { it.title.isNotBlank() }
+                .joinToString("\n") { (if (it.isCompleted) "\u2611 " else "\u2610 ") + it.title }
+        } else content
+
     fun performSave() {
         val validTodoItems = todoItems.filter { it.title.isNotBlank() }
         if (title.isBlank() && content.isBlank() && validTodoItems.isEmpty()) {
@@ -136,6 +185,7 @@ fun DetailScreen(
             return
         }
         val finalCategory = if (selectedCategory.isNullOrBlank()) null else selectedCategory
+        lastSaved = listOf<Any?>(title, content, finalCategory, validTodoItems)
         onEdit(title, content, finalCategory, validTodoItems)
         keyboardController?.hide()
         focusManager.clearFocus()
@@ -144,6 +194,7 @@ fun DetailScreen(
 
     fun saveAndDismiss() {
         val acknowledged = viewModel?.isLargeNoteAcknowledged(item.id) ?: false
+        val wordCount = if (content.length > 60000) content.trim().split(Regex("\\s+")).count { it.isNotEmpty() } else 0
         if (wordCount > 15000 && !acknowledged) {
             showLargeContentWarning = true
         } else {
@@ -184,7 +235,10 @@ fun DetailScreen(
         if (isEditing) {
             undoRedoHelper.reset(content)
             titleFieldValue = TextFieldValue(title, selection = TextRange(title.length))
-            contentFieldValue = TextFieldValue(content, selection = TextRange(content.length))
+            contentState.edit {
+                replace(0, length, content)
+                selection = TextRange(content.length)
+            }
         } else {
             keyboardController?.hide()
             focusManager.clearFocus()
@@ -192,8 +246,8 @@ fun DetailScreen(
     }
 
     LaunchedEffect(currentText) {
-        if (isEditing && contentFieldValue.text != currentText) {
-            val oldText = contentFieldValue.text
+        if (isEditing && contentState.text.toString() != currentText) {
+            val oldText = contentState.text.toString()
             val newText = currentText
             
             var start = 0
@@ -208,32 +262,66 @@ fun DetailScreen(
             }
             
             val safeCursorIndex = endNew.coerceIn(0, newText.length)
-            contentFieldValue = TextFieldValue(newText, selection = TextRange(safeCursorIndex))
+            contentState.edit {
+                replace(0, length, newText)
+                selection = TextRange(safeCursorIndex)
+            }
             content = newText
         }
     }
 
-    LaunchedEffect(contentFieldValue, textLayoutResult, viewportHeight, isEditing) {
-        if (!isEditing || isUndoRedoInProgress) return@LaunchedEffect
-        val layout = textLayoutResult ?: return@LaunchedEffect
-        if (viewportHeight <= 0) return@LaunchedEffect
-        if (layout.layoutInput.text.text != contentFieldValue.text) return@LaunchedEffect
-        val cursorIndex = contentFieldValue.selection.end
-            .coerceIn(0, contentFieldValue.text.length)
-        val cursorRect = layout.getCursorRect(cursorIndex)
-        val currentScroll = scrollState.value
-        val viewportBottom = currentScroll + viewportHeight
-        when {
-            cursorRect.bottom + marginBottomPx > viewportBottom -> {
-                val target = (cursorRect.bottom + marginBottomPx - viewportHeight)
-                    .toInt().coerceAtLeast(0)
-                if (target != currentScroll) scrollState.scrollTo(target)
+    LaunchedEffect(contentState) {
+        snapshotFlow { contentState.text.toString() }.collect { text ->
+            if (isEditing && text != content) {
+                content = text
+                undoRedoHelper.setText(text)
             }
-            cursorRect.top - marginTopPx < currentScroll -> {
-                val target = (cursorRect.top - marginTopPx)
-                    .toInt().coerceAtLeast(0)
-                if (target != currentScroll) scrollState.scrollTo(target)
+        }
+    }
+
+    val layoutHolder = remember { arrayOfNulls<TextLayoutResult>(1) }
+    val viewportHolder = remember { IntArray(1) }
+    var autoScrollTick by remember { mutableIntStateOf(0) }
+    var autoScrollSpeed by remember { mutableFloatStateOf(0f) }
+    var autoScrollUntil by remember { mutableLongStateOf(0L) }
+
+    LaunchedEffect(contentState) {
+        var previous = contentState.selection
+        snapshotFlow { contentState.selection }.collect { selection ->
+            val old = previous
+            previous = selection
+            val layout = layoutHolder[0]
+            val viewport = viewportHolder[0]
+            if (!isEditing || layout == null || viewport <= 0 || selection.collapsed || old.collapsed) return@collect
+            val moved = when {
+                selection.end != old.end && selection.start == old.start -> selection.end
+                selection.start != old.start && selection.end == old.end -> selection.start
+                else -> -1
             }
+            if (moved < 0 || moved > layout.layoutInput.text.length) return@collect
+            val rect = layout.getCursorRect(moved)
+            val edgePx = with(density) { 96.dp.toPx() }
+            val topV = rect.top - scrollState.value
+            val bottomV = rect.bottom - scrollState.value
+            val speed = when {
+                bottomV > viewport - edgePx ->
+                    (2f + 8f * ((bottomV - (viewport - edgePx)) / edgePx).coerceIn(0f, 1.5f)) * density.density
+                topV < edgePx ->
+                    -(2f + 8f * ((edgePx - topV) / edgePx).coerceIn(0f, 1.5f)) * density.density
+                else -> 0f
+            }
+            if (speed != 0f) {
+                autoScrollSpeed = speed
+                autoScrollUntil = System.currentTimeMillis() + 500
+                autoScrollTick++
+            }
+        }
+    }
+
+    LaunchedEffect(autoScrollTick) {
+        while (System.currentTimeMillis() < autoScrollUntil) {
+            withFrameNanos { }
+            scrollState.scrollBy(autoScrollSpeed)
         }
     }
 
@@ -247,12 +335,15 @@ fun DetailScreen(
             DesignMode.TASK -> 20.sp
             else -> 22.sp
         },
-        fontWeight = FontWeight.Normal,
+        fontWeight = FontWeight.SemiBold,
         lineHeight = 32.sp
     )
 
+    val isHtmlContent = content.contains("<html", ignoreCase = true) || content.contains("<style", ignoreCase = true) || content.contains("<body", ignoreCase = true)
+
     key(themeMode) {
         Scaffold(modifier = Modifier.fillMaxSize(),
+            contentWindowInsets = WindowInsets(0, 0, 0, 0),
             topBar = {
                 DetailTopBar(
                     item = item,
@@ -262,18 +353,23 @@ fun DetailScreen(
                     showTodoMenu = showTodoMenu,
                     onShowTodoMenuChange = { showTodoMenu = it },
                     onBackClick = { saveAndDismiss() },
-                    onCopy = onCopy,
-                    onShare = onShare,
+                    onCopy = { onCopy(copyText()) },
+                    onShare = { onShare(copyText()) },
                     onTagsClick = { showTagsDialog = true },
                     onPinClick = { togglePin() },
                     hasCheckedItems = todoItems.any { it.isCompleted },
                     onUntickAll = {
                         todoItems = todoItems.map { it.copy(isCompleted = false) }
-                        if (!isEditing) onAutoSave(title, content, selectedCategory, todoItems)
+                        autoSaveNow()
                     },
                     onDeleteTicked = {
                         todoItems = todoItems.filter { !it.isCompleted }
-                        if (!isEditing) onAutoSave(title, content, selectedCategory, todoItems)
+                        autoSaveNow()
+                    },
+                    isEditing = isEditing,
+                    onToggleEdit = {
+                        if (isEditing) autoSaveNow()
+                        isEditing = !isEditing
                     }
                 )
             }
@@ -282,6 +378,7 @@ fun DetailScreen(
                 modifier = Modifier
                     .fillMaxSize()
                     .padding(paddingValues)
+                    .then(if (isEditing || item.isTodo || isHtmlContent) Modifier.navigationBarsPadding() else Modifier)
                     .imePadding() // Fix for keyboard overlap
                     .background(
                         when (design.mode) {
@@ -291,26 +388,35 @@ fun DetailScreen(
                         }
                     )
             ) {
-                DetailTitleSection(
-                    isEditing = isEditing,
-                    titleFieldValue = titleFieldValue,
-                    onTitleChange = { titleFieldValue = it },
-                    title = title,
-                    designMode = design.mode,
-                    titleTextStyle = titleTextStyle,
-                    focusRequester = focusRequester,
-                    onEditClick = { isEditing = true }
-                )
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .zIndex(1f)
+                        .background(
+                            when (design.mode) {
+                                DesignMode.NOTEBOOKS -> MaterialTheme.colorScheme.surface
+                                else -> MaterialTheme.colorScheme.background
+                            }
+                        )
+                ) {
+                    DetailTitleSection(
+                        isEditing = isEditing,
+                        titleFieldValue = titleFieldValue,
+                        onTitleChange = { titleFieldValue = it },
+                        title = title,
+                        designMode = design.mode,
+                        titleTextStyle = titleTextStyle,
+                        focusRequester = focusRequester,
+                        onEditClick = { isEditing = true }
+                    )
+                }
 
                 if (item.isTodo) {
                     TodoChecklist(
                         todoItems = todoItems,
                         onUpdate = { 
                             todoItems = it
-                            // Auto-save in read mode without closing screen
-                            if (!isEditing) {
-                                onAutoSave(title, content, selectedCategory, it)
-                            }
+                            autoSaveNow()
                         },
                         isEditing = isEditing,
                         onEditRequest = { isEditing = true },
@@ -320,17 +426,12 @@ fun DetailScreen(
                     )
                 } else if (isEditing) {
                     DetailContentEditor(
-                        contentFieldValue = contentFieldValue,
-                        onContentChange = { newValue ->
-                            contentFieldValue = newValue
-                            content = newValue.text
-                            undoRedoHelper.setText(newValue.text)
-                        },
-                        onTextLayout = { result -> textLayoutResult = result },
+                        state = contentState,
                         scrollState = scrollState,
                         focusRequester = focusRequester,
                         content = content,
-                        onGloballyPositioned = { coords -> viewportHeight = coords.size.height },
+                        onTextLayout = { layoutHolder[0] = it },
+                        onViewportHeight = { viewportHolder[0] = it },
                         modifier = Modifier.weight(1f)
                     )
                 } else {
@@ -391,4 +492,10 @@ fun DetailScreen(
             onDismiss = { showTagsDialog = false }
         )
     }
+}
+
+private tailrec fun Context.findComponentActivity(): ComponentActivity? = when (this) {
+    is ComponentActivity -> this
+    is ContextWrapper -> baseContext.findComponentActivity()
+    else -> null
 }

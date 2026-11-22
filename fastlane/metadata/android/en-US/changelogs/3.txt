@@ -1,0 +1,23 @@
+U Copy v1.2.0 - Never Lose a Note
+
+NEW
+- Notes auto-save while you type, and instantly when you leave the app or the screen turns off
+- Edit / Done button on the note screen to switch between read mode and edit mode
+- Read mode: new text selection with drag handles, Copy / Select all / Select paragraph / Share, and smooth auto-scroll while selecting
+- Edit mode: new text editor with smoother cursor and selection scrolling
+- Grid and view styles (Compact, Comfortable, Detailed, Grid) now work in every design
+- Share or open .md, .html, .txt, .csv, .json, .xml and .zip files from other apps to import them into U Copy
+
+IMPROVED
+- Modern typography and a rounded Undo / Redo bar
+- Lists and notes flow behind the transparent navigation bar; the last note scrolls above the + button
+- Faster typing in large notes, saving, search and label loading
+- Lighter clipboard service
+
+FIXED
+- Swiping a short note no longer starts text selection
+- Copy and Share use your latest edits; to-do lists copy as checkbox lines
+- Pinning a brand-new note works and auto-save never creates duplicates
+- Tapping a notification or widget no longer closes the note you are editing
+- Selection is no longer lost while scrolling
+- Solid strip at the bottom of the screen removed

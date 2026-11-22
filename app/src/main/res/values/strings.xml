@@ -458,9 +458,10 @@
     <string name="shortcut_trash_long">Open Trash</string>
     <string name="shortcut_new_note_short">New Note</string>
     <string name="shortcut_new_note_long">Create New Note</string>
-    <string name="whats_new_title">What\'s New in 1.1.0</string>
-    <string name="whats_new_body">\u2022 Fixed: Notes stay safe during updates\n\u2022 Faster: Settings save instantly\n\u2022 Smoother: Memory leak fixed\n\u2022 New: Trash keeps notes for 30 days\n\u2022 Fixed: Shared notes open reliably</string>
+    <string name="whats_new_title">What\'s New in 1.2.0</string>
+    <string name="whats_new_body">NEW\n\u2022 Notes auto-save while you type, and instantly when you leave the app or the screen turns off\n\u2022 Edit / Done button to switch between read mode and edit mode\n\u2022 Read mode: new text selection with drag handles, Copy / Select all / Select paragraph / Share, and smooth auto-scroll while selecting\n\u2022 Edit mode: new text editor with smoother cursor and selection scrolling\n\u2022 Grid and view styles (Compact, Comfortable, Detailed, Grid) now work in every design\n\u2022 Share or open .md, .html, .txt, .csv, .json, .xml and .zip files from other apps to import them into U Copy\n\nIMPROVED\n\u2022 Modern typography and a rounded Undo / Redo bar\n\u2022 Lists and notes now flow behind the transparent navigation bar, and the last note scrolls above the + button\n\u2022 Faster typing in large notes, saving, search and label loading\n\u2022 Lighter clipboard service\n\nFIXED\n\u2022 Swiping a short note no longer starts text selection\n\u2022 Copy and Share now use your latest edits; to-do lists copy as checkbox lines\n\u2022 Pinning a brand-new note works, and auto-save never creates duplicates\n\u2022 Tapping a notification or widget no longer closes the note you are editing\n\u2022 Selection is no longer lost while scrolling\n\u2022 Solid strip at the bottom of the screen removed</string>
     <string name="whats_new_dismiss">Got it</string>
     <string name="shortcut_todo_short">New To-Do</string>
     <string name="shortcut_todo_long">Create New To-Do List</string>
+    <string name="select_paragraph">Select paragraph</string>
 </resources>

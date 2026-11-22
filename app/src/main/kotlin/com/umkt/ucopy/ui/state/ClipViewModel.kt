@@ -39,6 +39,8 @@ class ClipViewModel(application: Application) : AndroidViewModel(application) {
     val uiState: StateFlow<UiState> = _uiState.asStateFlow()
 
     private var allItems = listOf<Clip>()
+    private var lastCachedItems: List<Clip>? = null
+    private val saveMutex = Mutex()
     private val _deletedItems = MutableStateFlow<List<DeletedItem>>(emptyList())
     val deletedItems: StateFlow<List<DeletedItem>> = _deletedItems.asStateFlow()
 
@@ -331,11 +333,18 @@ class ClipViewModel(application: Application) : AndroidViewModel(application) {
 
         _uiState.value = _uiState.value.copy(items = sorted)
         
-        viewModelScope.launch(Dispatchers.IO) {
-            try {
-                val cached = json.encodeToString(allItems)
-                java.io.File(getApplication<Application>().filesDir, "clips_cache.json").writeText(cached)
-            } catch (e: Exception) {}
+        val snapshot = allItems
+        if (snapshot !== lastCachedItems) {
+            lastCachedItems = snapshot
+            viewModelScope.launch(Dispatchers.IO) {
+                try {
+                    val cached = json.encodeToString(snapshot)
+                    val target = java.io.File(getApplication<Application>().filesDir, "clips_cache.json")
+                    val tmp = java.io.File(getApplication<Application>().filesDir, "clips_cache.json.tmp")
+                    tmp.writeText(cached)
+                    if (!tmp.renameTo(target)) { target.writeText(cached); tmp.delete() }
+                } catch (e: Exception) {}
+            }
         }
     }
 
@@ -349,51 +358,55 @@ class ClipViewModel(application: Application) : AndroidViewModel(application) {
         showSnackbar: Boolean = true
     ) {
         viewModelScope.launch {
-            try {
-                if (!existingId.isNullOrBlank()) {
-                    val existing = allItems.find { it.id == existingId }
-                    if (existing != null) {
-                        val updated = existing.copy(
-                            title = title,
-                            content = content,
-                            category = category,
-                            todoItems = todoItems,
-                            isTodo = isTodo
-                        )
-                        repository.update(updated)
-                        allItems = allItems.map { if (it.id == existingId) updated else it }
+            saveMutex.withLock {
+                try {
+                    val now = System.currentTimeMillis()
+                    if (!existingId.isNullOrBlank()) {
+                        val existing = allItems.find { it.id == existingId }
+                        if (existing != null) {
+                            val updated = existing.copy(
+                                title = title,
+                                content = content,
+                                category = category,
+                                todoItems = todoItems,
+                                isTodo = isTodo,
+                                timestamp = now
+                            )
+                            repository.update(updated)
+                            allItems = allItems.map { if (it.id == existingId) updated else it }
+                        } else {
+                            val newItem = Clip(
+                                id = existingId,
+                                title = title,
+                                content = content,
+                                category = category,
+                                todoItems = todoItems,
+                                isTodo = isTodo
+                            )
+                            repository.add(newItem)
+                            allItems = listOf(newItem) + allItems
+                        }
                     } else {
-                        val newItem = Clip(
-                            id = existingId,
+                        val item = Clip(
                             title = title,
                             content = content,
                             category = category,
                             todoItems = todoItems,
                             isTodo = isTodo
                         )
-                        repository.add(newItem)
-                        allItems = listOf(newItem) + allItems
+                        repository.add(item)
+                        allItems = listOf(item) + allItems
                     }
-                } else {
-                    val item = Clip(
-                        title = title,
-                        content = content,
-                        category = category,
-                        todoItems = todoItems,
-                        isTodo = isTodo
-                    )
-                    repository.add(item)
-                    allItems = listOf(item) + allItems
+                    applyFilterAndSort()
+                    loadLabels()
+                    performAutoBackup()
+                    updateWidgets()
+                    if (showSnackbar) {
+                        _uiState.value = _uiState.value.copy(snackbarMessage = getApplication<Application>().getString(R.string.msg_item_saved))
+                    }
+                } catch (e: Exception) {
+                    _uiState.value = _uiState.value.copy(snackbarMessage = getApplication<Application>().getString(R.string.msg_error_generic, e.message ?: ""))
                 }
-                applyFilterAndSort()
-                loadLabels()
-                performAutoBackup()
-                updateWidgets()
-                if (showSnackbar) {
-                    _uiState.value = _uiState.value.copy(snackbarMessage = getApplication<Application>().getString(R.string.msg_item_saved))
-                }
-            } catch (e: Exception) {
-                _uiState.value = _uiState.value.copy(snackbarMessage = getApplication<Application>().getString(R.string.msg_error_generic, e.message ?: ""))
             }
         }
     }
@@ -534,17 +547,19 @@ class ClipViewModel(application: Application) : AndroidViewModel(application) {
 
     fun togglePin(id: String) {
         viewModelScope.launch {
-            try {
-                val item = allItems.find { it.id == id }
-                item?.let {
-                    val updated = it.copy(isPinned = !it.isPinned)
-                    repository.update(updated)
-                    allItems = allItems.map { if (it.id == id) updated else it }
-                    applyFilterAndSort()
-                    performAutoBackup()
+            saveMutex.withLock {
+                try {
+                    val item = allItems.find { it.id == id }
+                    item?.let {
+                        val updated = it.copy(isPinned = !it.isPinned)
+                        repository.update(updated)
+                        allItems = allItems.map { c -> if (c.id == id) updated else c }
+                        applyFilterAndSort()
+                        performAutoBackup()
+                    }
+                } catch (e: Exception) {
+                    _uiState.value = _uiState.value.copy(snackbarMessage = "Error: ${e.message}")
                 }
-            } catch (e: Exception) {
-                _uiState.value = _uiState.value.copy(snackbarMessage = "Error: ${e.message}")
             }
         }
     }

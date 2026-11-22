@@ -85,7 +85,9 @@ fun HomeScreen(
     clipToOpen: Clip? = null,
     onClipOpened: () -> Unit = {},
     sharedItemToOpen: Clip? = null,
-    onSharedItemOpened: () -> Unit = {}
+    onSharedItemOpened: () -> Unit = {},
+    pendingImportUris: List<Uri> = emptyList(),
+    onPendingImportHandled: () -> Unit = {}
 ) {
     val state by viewModel.uiState.collectAsState()
     val viewDensity by viewModel.viewDensity.collectAsState()
@@ -175,6 +177,18 @@ fun HomeScreen(
         if (sharedItemToOpen != null) {
             selectedItem = sharedItemToOpen
             onSharedItemOpened()
+        }
+    }
+
+    LaunchedEffect(pendingImportUris) {
+        if (pendingImportUris.isNotEmpty()) {
+            val uris = pendingImportUris
+            onPendingImportHandled()
+            uris.forEach { uri ->
+                viewModel.importItems(context, uri, mergeSingle = !smartImportState.value) { message ->
+                    scope.launch { snackbarHostState.showSnackbar(message) }
+                }
+            }
         }
     }
 

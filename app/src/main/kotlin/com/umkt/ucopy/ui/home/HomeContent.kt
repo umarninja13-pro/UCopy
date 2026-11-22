@@ -132,6 +132,8 @@ fun HomeContent(
 
     val pullRefreshState = rememberPullRefreshState(refreshing = isRefreshing, onRefresh = onRefresh)
 
+    val listBottomPadding = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding() + 96.dp
+
     Box(modifier = Modifier.fillMaxSize().padding(paddingValues).pullRefresh(pullRefreshState)) {
         val showAnim = actionPrefs.showListAnimations && state.hasCompletedInitialLoad
         val (pinnedItems, otherItems) = remember(state.items) {
@@ -149,13 +151,14 @@ fun HomeContent(
             },
             label = "view_transition"
         ) { currentDensity ->
-            if (currentDensity == ViewDensity.GRID && design.mode == DesignMode.DEFAULT) {
+            if (currentDensity == ViewDensity.GRID) {
                 Column(modifier = Modifier.fillMaxSize()) {
                     FilterChips()
 
                     LazyVerticalGrid(
                         columns = GridCells.Fixed(2),
                         modifier = Modifier.fillMaxWidth().weight(1f),
+                        contentPadding = PaddingValues(bottom = listBottomPadding),
                         verticalArrangement = Arrangement.spacedBy(8.dp),
                         horizontalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
@@ -170,9 +173,9 @@ fun HomeContent(
                                 )
                             }
                             gridItems(pinnedItems, key = { it.id }) { item ->
-                                ClipCard(
+                                HomeItemCard(
                                     item = item,
-                                    modifier = if (actionPrefs.showListAnimations) Modifier.fillMaxWidth().animateItem() else Modifier.fillMaxWidth(),
+                                    designMode = design.mode,
                                     themeMode = themeMode,
                                     viewDensity = currentDensity,
                                     highlightQuery = state.searchQuery,
@@ -185,9 +188,8 @@ fun HomeContent(
                                     onEdit = { onEdit(item) },
                                     onDelete = { onDelete(item.id) },
                                     onCardClick = { onCardClick(item) },
-                                    onPinToggle = { },
-                                    onFavoriteToggle = { },
-                                    onCategoryClick = onCategoryClick
+                                    onCategoryClick = onCategoryClick,
+                                    modifier = if (actionPrefs.showListAnimations) Modifier.fillMaxWidth().animateItem() else Modifier.fillMaxWidth()
                                 )
                             }
                         }
@@ -205,9 +207,9 @@ fun HomeContent(
                                 }
                             }
                             gridItems(otherItems, key = { it.id }) { item ->
-                                ClipCard(
+                                HomeItemCard(
                                     item = item,
-                                    modifier = if (actionPrefs.showListAnimations) Modifier.fillMaxWidth().animateItem() else Modifier.fillMaxWidth(),
+                                    designMode = design.mode,
                                     themeMode = themeMode,
                                     viewDensity = currentDensity,
                                     highlightQuery = state.searchQuery,
@@ -220,16 +222,15 @@ fun HomeContent(
                                     onEdit = { onEdit(item) },
                                     onDelete = { onDelete(item.id) },
                                     onCardClick = { onCardClick(item) },
-                                    onPinToggle = { },
-                                    onFavoriteToggle = { },
-                                    onCategoryClick = onCategoryClick
+                                    onCategoryClick = onCategoryClick,
+                                    modifier = if (actionPrefs.showListAnimations) Modifier.fillMaxWidth().animateItem() else Modifier.fillMaxWidth()
                                 )
                             }
                         }
                     }
                 }
             } else {
-                LazyColumn(modifier = Modifier.fillMaxSize()) {
+                LazyColumn(modifier = Modifier.fillMaxSize(), contentPadding = PaddingValues(bottom = listBottomPadding)) {
                     if (state.selectedCategory != null) {
                         item { FilterChips() }
                     }
@@ -285,7 +286,8 @@ fun HomeContent(
                                         onFavoriteToggle = { },
                                         onCategoryClick = onCategoryClick,
                                         onClick = { onCardTap() },
-                                        onLongClick = { onLong() }
+                                        onLongClick = { onLong() },
+                                        viewDensity = currentDensity
                                     )
                                 }
                                 DesignMode.LIST -> {
@@ -301,7 +303,8 @@ fun HomeContent(
                                         onFavoriteToggle = { },
                                         onCategoryClick = onCategoryClick,
                                         onClick = { onCardTap() },
-                                        onLongClick = { onLong() }
+                                        onLongClick = { onLong() },
+                                        viewDensity = currentDensity
                                     )
                                 }
                                 DesignMode.TASK -> {
@@ -317,7 +320,8 @@ fun HomeContent(
                                         onFavoriteToggle = { },
                                         onCategoryClick = onCategoryClick,
                                         onClick = { onCardTap() },
-                                        onLongClick = { onLong() }
+                                        onLongClick = { onLong() },
+                                        viewDensity = currentDensity
                                     )
                                 }
                             }
@@ -377,7 +381,8 @@ fun HomeContent(
                                         onFavoriteToggle = { },
                                         onCategoryClick = onCategoryClick,
                                         onClick = { onCardTap() },
-                                        onLongClick = { onLong() }
+                                        onLongClick = { onLong() },
+                                        viewDensity = currentDensity
                                     )
                                 }
                                 DesignMode.LIST -> {
@@ -393,7 +398,8 @@ fun HomeContent(
                                         onFavoriteToggle = { },
                                         onCategoryClick = onCategoryClick,
                                         onClick = { onCardTap() },
-                                        onLongClick = { onLong() }
+                                        onLongClick = { onLong() },
+                                        viewDensity = currentDensity
                                     )
                                 }
                                 DesignMode.TASK -> {
@@ -409,7 +415,8 @@ fun HomeContent(
                                         onFavoriteToggle = { },
                                         onCategoryClick = onCategoryClick,
                                         onClick = { onCardTap() },
-                                        onLongClick = { onLong() }
+                                        onLongClick = { onLong() },
+                                        viewDensity = currentDensity
                                     )
                                 }
                             }

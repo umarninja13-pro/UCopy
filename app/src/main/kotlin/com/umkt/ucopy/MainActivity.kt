@@ -5,6 +5,7 @@ import android.app.ActivityManager
 import android.content.Context
 import com.umkt.ucopy.data.UserPreferences
 import android.graphics.Color
+import android.net.Uri
 import android.os.Bundle
 import androidx.appcompat.app.AppCompatActivity
 import androidx.activity.compose.setContent
@@ -12,6 +13,7 @@ import androidx.activity.enableEdgeToEdge
 import androidx.compose.runtime.*
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.graphics.toArgb
+import androidx.core.content.IntentCompat
 import androidx.compose.material3.MaterialTheme
 import androidx.core.view.WindowInsetsControllerCompat
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -33,6 +35,25 @@ class MainActivity : AppCompatActivity() {
 
     private var _sharedItemToOpen by mutableStateOf<Clip?>(null)
     private var _refreshTrigger by mutableStateOf(0)
+    private var _pendingImportUris by mutableStateOf<List<Uri>>(emptyList())
+
+    private fun extractSharedUris(intent: android.content.Intent): List<Uri> {
+        return when (intent.action) {
+            android.content.Intent.ACTION_SEND -> {
+                if (!intent.getStringExtra(android.content.Intent.EXTRA_TEXT).isNullOrBlank()) {
+                    emptyList()
+                } else {
+                    val stream = IntentCompat.getParcelableExtra(intent, android.content.Intent.EXTRA_STREAM, Uri::class.java)
+                    val clipUri = intent.clipData?.takeIf { it.itemCount > 0 }?.getItemAt(0)?.uri
+                    listOfNotNull(stream ?: clipUri)
+                }
+            }
+            android.content.Intent.ACTION_SEND_MULTIPLE ->
+                IntentCompat.getParcelableArrayListExtra(intent, android.content.Intent.EXTRA_STREAM, Uri::class.java)?.toList() ?: emptyList()
+            android.content.Intent.ACTION_VIEW -> listOfNotNull(intent.data)
+            else -> emptyList()
+        }
+    }
 
     private fun handleIntent(intent: android.content.Intent?) {
         if (intent == null) return
@@ -67,6 +88,12 @@ class MainActivity : AppCompatActivity() {
             try {
                 _sharedItemToOpen = json.decodeFromString(clipJson)
             } catch (_: Exception) { }
+            return
+        }
+        val sharedUris = extractSharedUris(intent)
+        if (sharedUris.isNotEmpty()) {
+            _pendingImportUris = sharedUris
+            intent.action = null
             return
         }
         if (intent.action == android.content.Intent.ACTION_SEND && intent.type == "text/plain") {
@@ -200,7 +227,10 @@ class MainActivity : AppCompatActivity() {
                         @Suppress("DEPRECATION")
                         w.statusBarColor = android.graphics.Color.TRANSPARENT
                         @Suppress("DEPRECATION")
-                        w.navigationBarColor = appBackground.toArgb()
+                        w.navigationBarColor = android.graphics.Color.TRANSPARENT
+                        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.Q) {
+                            w.isNavigationBarContrastEnforced = false
+                        }
                         w.decorView.setBackgroundColor(targetDecorColor)
                         val controller = WindowInsetsControllerCompat(w, view)
                         controller.isAppearanceLightStatusBars = !effectiveDark
@@ -246,6 +276,8 @@ class MainActivity : AppCompatActivity() {
                     onClipOpened = { clipToOpen = null },
                     sharedItemToOpen = _sharedItemToOpen,
                     onSharedItemOpened = { _sharedItemToOpen = null },
+                    pendingImportUris = _pendingImportUris,
+                    onPendingImportHandled = { _pendingImportUris = emptyList() },
                     actionPrefs = actionPrefs,
                     onActionPrefsChange = { newPrefs ->
                         actionPrefs = newPrefs
@@ -303,8 +335,8 @@ class MainActivity : AppCompatActivity() {
 
     private fun getAppVersion(): String {
         return try {
-            packageManager.getPackageInfo(packageName, 0).versionName ?: "1.1.0"
-        } catch (_: Exception) { "1.1.0" }
+            packageManager.getPackageInfo(packageName, 0).versionName ?: "1.2.0"
+        } catch (_: Exception) { "1.2.0" }
     }
 
     override fun onResume() {
